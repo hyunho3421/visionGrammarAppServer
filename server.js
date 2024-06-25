@@ -32,9 +32,11 @@ app.use(bodyParser.json());
 
 async function callChatGpt(message) {
     try {
+        const questionText = message + "1~5번중에 맞춤법, 뛰어쓰기, 문법이 맞는 말이 뭐야? 정답 번호와 문장만 알려줘. 설명은 하지마."
+
         const response = await openai.chat.completions.create({
             model: 'gpt-4-turbo',
-            messages: [{ role: 'system', content: '당신은 한국어 문법 전문가입니다.' },{ role: 'user', content: message }],
+            messages: [{ role: 'system', content: '당신은 한국어 문법 전문가입니다.' },{ role: 'user', content: questionText }],
         });
 
         return response.choices[0].message.content;
@@ -97,8 +99,8 @@ app.post('/app/first', async (req, res) => {
         modelName: modelName,
         manufacturer: manufacturer,
         date: today,
-        grant: false
-        
+        grant: false,
+        useApi: 0
     });
 
     res.json({
@@ -148,8 +150,15 @@ app.post('/grammar/check', async (req, res) => {
     } else {
         if (doc.data().grant == true) {
             const chatGptRes = await callChatGpt(questionText);
-                
-            res.send(chatGptRes);
+
+            res.send({
+                "correct" : chatGptRes,
+                "result" : "SUCCESS"
+            });
+
+            const useApi = doc.data().useApi + 1;
+            console.log(useApi)
+            docRef.update({useApi:useApi});
         } else {
             // 권한 없음.
             res.json({"result":"NO_GRANT"});
