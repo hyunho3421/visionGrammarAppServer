@@ -40,6 +40,14 @@ function getNowTime() {
     return nowTime;
 }
 
+function getDateFormatYYYYMMDD() {
+    // 한국 시간으로 설정 (Asia/Seoul)
+    const koreanTime = moment_timezone.tz(Date.now(), 'Asia/Seoul');
+    const nowTime = koreanTime.format('YYYY.MM.D');
+
+    return nowTime;
+}
+
 function getNowTimeLog() {
     // 한국 시간으로 설정 (Asia/Seoul)
     const koreanTime = moment_timezone.tz(Date.now(), 'Asia/Seoul');
@@ -144,7 +152,8 @@ app.post('/vision/regist', async (req, res) => {
                 ip: ip,
                 joinDate: joinDate,
                 useDate: '',
-                useApi: 0
+                useApi: 0,
+                group: 'none'
             });
 
             res.send({
@@ -176,7 +185,6 @@ app.post('/vision/grammar', async (req, res) => {
     // 등록된 계정 정보 가져오기
     try {
         const docRef = dbDevelop.collection("device").doc(deviceId);
-        console.log(docRef==null ?  "null": "" );
         const doc = await docRef.get();
 
         if (!doc.exists) {
@@ -201,6 +209,27 @@ app.post('/vision/grammar', async (req, res) => {
                 const useDate = getNowTime();
                 const useApi = doc.data().useApi + 1;
                 docRef.update({useApi:useApi, useDate: useDate});
+ 
+                const statDocRef = dbDevelop.collection("statistics").doc(getDateFormatYYYYMMDD());
+                const statDoc = await statDocRef.get();
+                const statisticsObj = {};
+
+                if (statDoc.exists) {
+                    const groupName = doc.data().group;
+
+                    if (statDoc.data()[groupName] == null) {
+                        statisticsObj[groupName] = 1;
+                    } else {
+                        statisticsObj[groupName] = (statDoc.data()[groupName] + 1);
+                    }
+                    
+                    statDocRef.update(statisticsObj);
+                } else {
+                    const groupName = doc.data().group;
+                    statisticsObj[groupName] = 1;
+                    statDocRef.set(statisticsObj);
+                }
+
             } else {
                 // 권한 없음.
                 res.send({
@@ -223,6 +252,7 @@ app.post('/vision/grammar', async (req, res) => {
         console.timeEnd("[TIME][VISION][GRAMMAR]");
     }
 });
+
 
 /**
  * app에 certify 저장안되어있을때 호출
